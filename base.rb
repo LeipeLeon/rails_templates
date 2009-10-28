@@ -18,7 +18,7 @@ git :init
 git :add => "."
 git :commit => '-m "Initial commit."'
 
-gem 'thoughtbot-shoulda', :source => "http://gems.github.com"
+# gem 'thoughtbot-shoulda', :source => "http://gems.github.com"
 gem 'haml', :version => '>= 2.0.6' # for SASS
 gem "json"
 gem "javan-whenever", :lib => false, :source => "http://gems.github.com"
@@ -390,8 +390,8 @@ route "map.static '/:action', :controller => 'static'"
 # route "map.login  '/login',  :controller => 'session', :action => 'new'"
 # route "map.logout '/logout', :controller => 'session', :action => 'destroy'"
 # route "map.activate '/activate/:activation_code', :controller => 'users', :action => 'activate', :activation_code => nil"
-route "map.comatose_admin"
-route "map.comatose_root ''"
+# route "map.comatose_admin"
+# route "map.comatose_root ''"
 
 rake("ck_fu:copy_styles")
 rake("auth:gen:site_key")
