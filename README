@@ -17,3 +17,7 @@ rake rails:template LOCATION=../rails_templates/facebook.rb
 The twitter app generates ... [more info needed]
 
 	class User < TwitterAuth::GenericUser
+
+== credits ==
+
+http://github.com/jeremymcanally/rails-templates
