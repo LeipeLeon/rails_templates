@@ -1,4 +1,5 @@
 app_name = ask("\nWhat is your application called?")
+ssh_user = ask("\nWhich SSH user is used on your remote?")
 
 run "rm public/index.html"
 run "rm public/images/rails.png"
@@ -18,60 +19,34 @@ git :init
 git :add => "."
 git :commit => '-m "Initial commit."'
 
-# gem 'thoughtbot-shoulda', :source => "http://gems.github.com"
-gem 'haml', :version => '>= 2.0.6' # for SASS
-gem "json"
-gem "javan-whenever", :lib => false, :source => "http://gems.github.com"
-# gem "icalendar", :version => ">=1.1.0"
-# gem 'mislav-will_paginate', :version => '~> 2.2.3', :lib => 'will_paginate',  :source => 'http://gems.github.com'
-
-git :add => "."
-git :commit => '-m "Added Base gems"'
-
-plugin 'paperclip', :git => "git://github.com/thoughtbot/paperclip.git"
-plugin 'restful_authentication', :git => "git://github.com/technoweenie/restful-authentication.git"
-# plugin 'role_requirement', :git => 'git://github.com/timcharper/role_requirement.git'
-# plugin 'aasm', :git => "git://github.com/rubyist/aasm.git"
 plugin 'acts_as_list', :git => "git://github.com/rails/acts_as_list.git"
 plugin 'acts_as_tree', :git => "git://github.com/rails/acts_as_tree.git"
 plugin 'exception_notification', :git => "git://github.com/rails/exception_notification.git"
 plugin 'ck_fu', :git => "git://github.com/r38y/ck_fu.git"
-# plugin 'mobile-fu', :git => "git://github.com/brendanlim/mobile-fu.git"
-# plugin 'spawn', :git => "git://github.com/tra/spawn.git"
-# plugin 'comatose', :git => "git://github.com/darthapo/comatose.git"
-# plugin '', :git => ""
-# plugin 'invoicing', :git => 'git://github.com/ept/invoicing.git'
-# gem 'ruby-openid'
-# plugin 'open_id_authentication', :git => 'git://github.com/rails/open_id_authentication.git'
-
-## Plugins for BDD
-# plugin 'jrails', :git => 'git://github.com/aaronchi/jrails.git '
-# plugin 'uberkit', :git => 'git://github.com/mbleigh/uberkit.git'
-# plugin 'rspec', :git => "git://github.com/dchelimsky/rspec.git"
-# plugin 'rspec-rails', :git => "git://github.com/dchelimsky/rspec-rails.git"
-# plugin 'factory_girl', :git => "git://github.com/thoughtbot/factory_girl.git"
-# plugin 'cucumber', :git => "git://github.com/aslakhellesoy/cucumber.git"
-# generate("rspec")
 
 git :add => "."
 git :commit => '-m "Added plugins"'
 
+plugin 'rspec', :git => "git://github.com/dchelimsky/rspec.git"
+plugin 'rspec-rails', :git => "git://github.com/dchelimsky/rspec-rails.git"
+plugin 'factory_girl', :git => "git://github.com/thoughtbot/factory_girl.git"
+plugin 'cucumber', :git => "git://github.com/aslakhellesoy/cucumber.git"
 
-if yes?("\nRun rake gems:install? (yes/no)")
-  rake("gems:install", :sudo => true)
-end
-
-# generate('controller', 'static')
-# generate('twitter_auth')
-# generate('comatose_migration')
-# generate('paperclip')
-
-# generate("authenticated", "user sessions --include-activation --stateful --aasm --rspec --old-passwords")
-# generate('roles','Admin User')
-# generate('roles','Executive User')
+generate("rspec")
 
 git :add => "."
-git :commit => '-m "Generated stuff"'
+git :commit => '-m "Added plugins for TDD/BDD"'
+
+file 'app/controllers/application_controller.rb', <<-RUBY
+class ApplicationController < ActionController::Base
+  helper :all # include all helpers, all the time
+  protect_from_forgery # See ActionController::RequestForgeryProtection for details
+  include ExceptionNotifiable
+  
+  # Scrub sensitive parameters from your log
+  filter_parameter_logging :password
+end
+RUBY
 
 file 'public/stylesheets/sass/master.sass', <<-SASS
 body
@@ -143,37 +118,12 @@ div.notice
   :color #131
 SASS
 
-file 'app/controllers/application_controller.rb', <<-RUBY
-class ApplicationController < ActionController::Base
-  helper :all # include all helpers, all the time
-  protect_from_forgery # See ActionController::RequestForgeryProtection for details
-  include AuthenticatedSystem
-  include ExceptionNotifiable
-  before_filter :set_redirect_back
+file 'app/views/layouts/application.html.erb', <<-TEMPLATE
+<h2>Welcome to Your Application!</h2>
+TEMPLATE
 
-  # Scrub sensitive parameters from your log
-  # filter_parameter_logging :password
-  
-  def set_redirect_back
-    session[:back] = params[:back] if params[:back]
-  end
-  
-  def redirect_back_or(path)
-    if session[:back]
-      redirect_to session[:back]
-      session[:back] = nil
-      return
-    end
-    if params[:back]
-      redirect_to params[:back]
-      return
-    end
-    redirect_to :back if :back
-    rescue ActionController::RedirectBackError
-      redirect_to path
-  end
-end
-RUBY
+git :add => '.'
+git :commit => '-m "Adding ApplicationController, Layouts and CSS."'
 
 file 'config/deploy.rb', <<-RUBY
 set :stages, %w(staging production)
@@ -183,7 +133,7 @@ require 'capistrano/ext/multistage'
 set :application, "#{app_name}"
 set :scm, :git
 default_run_options[:pty] = true
-set :repository, "git@github.com:LeipeLeon/#{app_name}.git"
+set :repository, "git@github.com:LeipeLeon/\#\{app_name}.git"
 
 set :repository_cache, "git_master"
 set :deploy_via, :remote_cache
@@ -248,37 +198,110 @@ namespace :deploy do
   after "deploy:symlink", "deploy:update_crontab"
   desc "Update the crontab file"
   task :update_crontab, :roles => :db do
-    # run "cd \#\{release_path} && whenever --update-crontab \#\{application}"
+    run "cd \#\{release_path} && whenever --update-crontab \#\{application}"
   end
+
+
+  desc "Set .htacces to RailsEnv staging"
+  task :update_htaccess, :roles => :app do
+    run "echo 'RailsEnv staging' > \#\{current_path}/public/.htaccess"
+  end
+  
+  # desc "Copy system directory from live site to local"
+  # task :copy_system do
+  #   run "rsync -avz /home/sneaker/apps/\#\{application}/\#\{shared_dir}/system/ \#\{deploy_to}/\#\{shared_dir}/system/"
+  # end
+end
+
+namespace :db do
+  require 'yaml'
+  
+  def mysql_dump(environment, file)
+    dbp = YAML::load(ERB.new(IO.read(File.join(File.dirname(__FILE__), 'database.yml'))).result)[environment]
+    run "mysqldump -u \#\{dbp['username']} --password=\#\{dbp['password']} \#\{dbp['database']} | bzip2 -c > \#\{file}"  do |ch, stream, out|
+      puts out
+    end
+  end
+  
+  desc "Copy production db to the staging db" 
+  task :copy_production_to_staging, :roles => :db, :only => { :primary => true } do
+    filename = "\#\{application}.dump.\#\{Time.now.to_i}.sql.bz2" 
+    file = "/tmp/\#\{filename}" 
+    on_rollback { delete file }
+    
+    # Dump production
+    mysql_dump('production', file)
+    
+    # load in staging
+    dbs = YAML::load(ERB.new(IO.read(File.join(File.dirname(__FILE__), 'database.yml'))).result)['staging']
+    logger.debug "delete all tables in staging database" 
+    run "mysqldump -u \#\{dbs['username']} --password=\#\{dbs['password']} --add-drop-table --no-data \#\{dbs['database']} | grep ^DROP | mysql -u \#\{dbs['username']} --password=\#\{dbs['password']} \#\{dbs['database']}"
+    logger.debug "Loading \#\{filename} into staging database" 
+    run "bzip2 -cd \#\{file} | mysql -u \#\{dbs['username']} --password=\#\{dbs['password']} \#\{dbs['database']}"
+    
+    run "rm \#\{file}" 
+    
+    # run "rsync -avz /home/sneaker/apps/\#\{application}/\#\{shared_dir}/system/ \#\{deploy_to}/\#\{shared_dir}/system/"
+  end
+
+  desc "Backup the production db to local filesystem" 
+  task :backup_to_local, :roles => :db, :only => { :primary => true } do
+    filename = "\#\{application}.dump.\#\{Time.now.to_i}.sql.bz2" 
+    file = "/tmp/\#\{filename}" 
+    on_rollback { delete file }
+    
+    # Dump production
+    mysql_dump('production', file)
+    
+    `mkdir -p \#\{File.dirname(__FILE__)}/../backups/`
+    get file, "backups/\#\{filename}" 
+    run "rm \#\{file}" 
+  end
+
+  desc "Copy the latest backup to the local development database" 
+  task :import_backup do
+    filename = `ls -tr backups | tail -n 1`.chomp
+    if filename.empty?
+      logger.important "No backups found" 
+    else
+      ddb = YAML::load(ERB.new(IO.read(File.join(File.dirname(__FILE__), 'database.yml'))).result)['development']
+      logger.debug "delete all tables in development database" 
+      `mysqldump -u \#\{ddb['username']} --password=\#\{ddb['password']} --add-drop-table --no-data \#\{ddb['database']} | grep ^DROP | mysql -u \#\{ddb['username']} --password=\#\{ddb['password']} \#\{ddb['database']}`
+      logger.debug "Loading backups/\#\{filename} into local development database" 
+      `bzip2 -cd backups/\#\{filename} | mysql -u \#\{ddb['username']} --password=\#\{ddb['password']} \#\{ddb['database']}`
+      logger.debug "Running migrations" 
+      `rake db:migrate`
+      # logger.debug "Syncing assets to local machine" 
+      # `rake assets:sync`
+    end
+  end
+
+  desc "Backup the remote production database to local filesystem and import it to the local development database" 
+  task :backup_and_import do
+    backup_to_local
+    import_backup
+  end
+end
 
 end
 RUBY
 
-
 file 'config/deploy/production.rb', <<-RUBY
-role :app, "webs"
-role :web, "webs"
-role :db,  "webs", :primary => true
-set :user, 'sneaker'
+role :app, "#{ssh_user}"
+role :web, "#{ssh_user}"
+role :db,  "#{ssh_user}", :primary => true
+set :user, '#{ssh_user}'
 set :rails_env, 'production'
-set :deploy_to, "/home/sneaker/apps/\#\{application}"
+set :deploy_to, "/home/\#\{user}/apps/\#\{application}"
 RUBY
 
 file 'config/deploy/staging.rb', <<-RUBY
-role :app, "webs"
-role :web, "webs"
-role :db,  "webs", :primary => true
-set :user, 'sneaker'
+role :app, "#{ssh_user}"
+role :web, "#{ssh_user}"
+role :db,  "#{ssh_user}", :primary => true
+set :user, '#{ssh_user}'
 set :rails_env, 'staging'
-set :deploy_to, "/var/www/apps/\#\{application}_staging"
-RUBY
-
-file 'app/controllers/static_controller.rb', <<-RUBY
-class StaticController < ApplicationController
-  def index
-    @users = User.all(:order => "created_at DESC", :limit => 16)
-  end
-end
+set :deploy_to, "/home/\#\{user}/apps/\#\{application}_staging"
 RUBY
 
 file 'config/exception.yml', <<-YAML
@@ -327,11 +350,19 @@ staging:
 
 production:
   host: http://#{app_name}.com
-  sender: Avartize <info@#{app_name}.com>
+  sender: #{app_name} <info@#{app_name}.com>
   subject: "[#{app_name}] "
 YAML
 
+file 'Capfile', <<-RUBY
+load 'deploy' if respond_to?(:namespace) # cap2 differentiator
+Dir['vendor/plugins/*/recipes/*.rb'].each { |plugin| load(plugin) }
+load 'config/deploy'
+RUBY
+
 # run "cp config/twitter_auth.yml config/twitter_auth.yml.example"
+git :add => '.'
+git :commit => '-m "Adding Deployment and Settings."'
 
 initializer 'email_settings.rb', <<-CODE
 env = ENV['RAILS_ENV'] || RAILS_ENV
@@ -383,24 +414,21 @@ class Object
 end
 CODE
 
-
-route "map.root :controller => 'static', :action => 'index'"
-route "map.static '/:action', :controller => 'static'"
-# route "map.signup  '/signup', :controller => 'users',   :action => 'new'"
-# route "map.login  '/login',  :controller => 'session', :action => 'new'"
-# route "map.logout '/logout', :controller => 'session', :action => 'destroy'"
-# route "map.activate '/activate/:activation_code', :controller => 'users', :action => 'activate', :activation_code => nil"
-# route "map.comatose_admin"
-# route "map.comatose_root ''"
+git :add => '.'
+git :commit => '-m "Adding Initializers."'
 
 rake("ck_fu:copy_styles")
 rake("auth:gen:site_key")
 
 git :add => '.'
-git :commit => '-m "Adding in templates."'
+git :commit => '-m "Executed RakeTask."'
 
 
 if yes?("\nCreate and migrate databases now? (yes/no)")
   rake("db:create:all")
   rake("db:migrate")
+end
+
+if yes?("\nRun rake gems:install? (yes/no)")
+  rake("gems:install", :sudo => true)
 end
