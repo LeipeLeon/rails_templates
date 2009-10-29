@@ -7,7 +7,7 @@ plugin 'aasm',                    :git => 'git://github.com/rubyist/aasm.git', :
 
 # Set up sessions, RSpec, user model, OpenID, etc, and run migrations
 rake('db:sessions:create')
-generate("authenticated", "user session")
+generate("authenticated", "user sessions --include-activation --stateful --aasm --rspec --old-passwords")
 generate("roles", "Role User")
 
 git :submodule => "init"
