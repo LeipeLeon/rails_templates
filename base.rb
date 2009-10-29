@@ -414,6 +414,25 @@ class Object
 end
 CODE
 
+lib 'rails.rb', <<-CODE
+module Rails
+  class TemplateRunner
+    # Adds a line inside the ApplicationController
+    def application_controller(data = nil, options = {}, &block)
+      sentinel = 'class ApplicationController < ActionController::Base'
+      
+      data = block.call if !data && block_given?
+      
+      in_root do
+        gsub_file 'app/controllers/application_controller.rb', /(#{Regexp.escape(sentinel)})/mi do |match|
+          "#{match}\n  " << data
+        end
+      end
+    end
+  end
+end
+CODE
+
 git :add => '.'
 git :commit => '-m "Adding Initializers."'
 
