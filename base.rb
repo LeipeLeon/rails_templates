@@ -6,14 +6,23 @@ run "rm public/images/rails.png"
 run "rm README"
 run "cp config/database.yml config/database.yml.example"
 
-file '.gitignore', <<-END
+file '.gitignore', 
+%q{
 .DS_Store
+.dotest/*
+coverage/*
+db/*.db
+doc/api
+doc/app
 log/*.log
+log/*.pid
+public/javascripts/all.js
+public/stylesheets/all.js
 tmp/**/*
 tmp/restart.txt
 config/database.yml
 db/*.sqlite3
-END
+}
 
 git :init
 git :add => "."
