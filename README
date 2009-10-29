@@ -1,0 +1,19 @@
+== Base templates ==
+
+First create base:
+
+rails app_name -m rails_templates/base.rb
+
+Apply other (optional) templates:
+
+cd app_name
+rake rails:template LOCATION=../rails_templates/auth.rb
+rake rails:template LOCATION=../rails_templates/twitter.rb
+rake rails:template LOCATION=../rails_templates/facebook.rb
+
+== Incompatibilities: ==
+
+* twitter autentication/restful_authentication
+The twitter app generates ... [more info needed]
+
+	class User < TwitterAuth::GenericUser
