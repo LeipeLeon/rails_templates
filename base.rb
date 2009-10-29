@@ -373,6 +373,13 @@ RUBY
 git :add => '.'
 git :commit => '-m "Adding Deployment and Settings."'
 
+# Download JQuery
+run "curl -L http://jqueryjs.googlecode.com/files/jquery-1.2.6.min.js > public/javascripts/jquery.js"
+run "curl -L http://jqueryjs.googlecode.com/svn/trunk/plugins/form/jquery.form.js > public/javascripts/jquery.form.js"
+
+git :add => '.'
+git :commit => '-m "Adding JQuery."'
+
 initializer 'email_settings.rb', <<-CODE
 env = ENV['RAILS_ENV'] || RAILS_ENV
 EMAIL = YAML.load_file(RAILS_ROOT + '/config/email_settings.yml')[env]
