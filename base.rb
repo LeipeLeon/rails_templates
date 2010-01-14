@@ -1,4 +1,4 @@
-app_name = ask("\nWhat is your application called?")
+application = ask("\nWhat is your application called? (NO SPACES!!)")
 ssh_user = ask("\nWhich SSH user is used on your remote?")
 
 run "rm public/index.html"
@@ -26,7 +26,7 @@ db/*.sqlite3
 
 git :init
 git :add => "."
-git :commit => '-m "Initial commit."'
+git :commit => '-m "Initial commit Template."'
 
 plugin 'acts_as_list', :git => "git://github.com/rails/acts_as_list.git"
 plugin 'acts_as_tree', :git => "git://github.com/rails/acts_as_tree.git"
@@ -128,8 +128,37 @@ div.notice
 SASS
 
 file 'app/views/layouts/application.html.erb', <<-TEMPLATE
-<h2>Welcome to Your Application!</h2>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+   "http://www.w3.org/TR/html4/strict.dtd">
+
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <title>#{application}</title>
+</head>
+<body>
+  <%- flash.each do |name, msg| -%>
+    <%= content_tag :div, msg, :class => name %>
+  <%- end -%>
+  <%= yield %>
+</body>
+</html>
 TEMPLATE
+
+generate('rspec_controller', 'static')
+
+file 'app/views/static/index.html.erb', <<-TEMPLATE
+<p>
+  You have successfully created a basic application! 
+</p>
+TEMPLATE
+
+file 'app/controllers/static_controller.rb', <<-RUBY
+class StaticController < ApplicationController
+  def index
+  end
+end
+RUBY
 
 git :add => '.'
 git :commit => '-m "Adding ApplicationController, Layouts and CSS."'
@@ -139,15 +168,16 @@ set :stages, %w(staging production)
 set :default_stage, "staging"
 require 'capistrano/ext/multistage'
 
-set :application, "#{app_name}"
+set :application, "#{application}"
 set :scm, :git
 default_run_options[:pty] = true
-set :repository, "git@github.com:LeipeLeon/\#\{app_name}.git"
+set :repository, "git@github.com:LeipeLeon/\#\{application}.git"
 
 set :repository_cache, "git_master"
 set :deploy_via, :remote_cache
 set :branch, "master"
 set :scm_verbose, :true
+set :keep_releases, 3
 
 set :use_sudo, false
 
@@ -184,7 +214,7 @@ namespace :deploy do
   desc "Create shared/config" 
   task :after_setup do
     # copy dev version of database.yml to alter later
-    run "if [ ! -d \"\#\{deploy_to}/\#\{shared_dir}/config\" ] ; then mkdir \#\{deploy_to}/\#\{shared_dir}/config ; fi"
+    run "if [ ! -d \\\"\#\{deploy_to}/\#\{shared_dir}/config\\\" ] ; then mkdir \#\{deploy_to}/\#\{shared_dir}/config ; fi"
   end
 
   after "deploy:finalize_update", "deploy:symlink_config"
@@ -192,10 +222,10 @@ namespace :deploy do
   task :symlink_config do
     ['database'].each {|yml_file|
       # remove  the git version of yml_file.yml
-      run "if [ -e \"\#\{release_path}/config/\#\{yml_file}.yml\" ] ; then rm \#\{release_path}/config/\#\{yml_file}.yml; fi"
+      run "if [ -e \\\"\#\{release_path}/config/\#\{yml_file}.yml\\\" ] ; then rm \#\{release_path}/config/\#\{yml_file}.yml; fi"
     
       # als shared conf bestand nog niet bestaat
-      run "if [ ! -e \"\#\{deploy_to}/\#\{shared_dir}/config/\#\{yml_file}.yml\" ] ; then cp \#\{deploy_to}/\#\{shared_dir}/\#\{repository_cache}/config/\#\{yml_file}.example.yml \#\{deploy_to}/\#\{shared_dir}/config/\#\{yml_file}.yml; fi"
+      run "if [ ! -e \\\"\#\{deploy_to}/\#\{shared_dir}/config/\#\{yml_file}.yml\\\" ] ; then cp \#\{deploy_to}/\#\{shared_dir}/\#\{repository_cache}/config/\#\{yml_file}.example.yml \#\{deploy_to}/\#\{shared_dir}/config/\#\{yml_file}.yml; fi"
     
       # link to the shared yml_file.yml
       run "ln -nfs \#\{deploy_to}/\#\{shared_dir}/config/\#\{yml_file}.yml \#\{release_path}/config/\#\{yml_file}.yml" 
@@ -291,8 +321,6 @@ namespace :db do
     import_backup
   end
 end
-
-end
 RUBY
 
 file 'config/deploy/production.rb', <<-RUBY
@@ -311,25 +339,30 @@ role :db,  "#{ssh_user}", :primary => true
 set :user, '#{ssh_user}'
 set :rails_env, 'staging'
 set :deploy_to, "/home/\#\{user}/apps/\#\{application}_staging"
+set :keep_releases, 1
 RUBY
 
 file 'config/exception.yml', <<-YAML
 development:
     recipients: leonb@beriedata.nl
     sender: '"Leon Berenschot" <leonb@beriedata.nl>'
-    prefix: "[#{app_name} Devel] "
+    prefix: "[#{application} Devel] "
 test:
     recipients: leonb@beriedata.nl
     sender: '"Leon Berenschot" <leonb@beriedata.nl>'
-    prefix: "[#{app_name} Test] "
+    prefix: "[#{application} Test] "
+cucumber:
+    recipients: leonb@beriedata.nl
+    sender: '"Leon Berenschot" <leonb@beriedata.nl>'
+    prefix: "[#{application} Cucumber] "
 staging:
     recipients: leonb@beriedata.nl
     sender: '"Leon Berenschot" <leonb@beriedata.nl>'
-    prefix: "[#{app_name} Staging] "
+    prefix: "[#{application} Staging] "
 production:
     recipients: leonb@beriedata.nl
     sender: '"Leon Berenschot" <leonb@beriedata.nl>'
-    prefix: "[#{app_name}] "
+    prefix: "[#{application}] "
 YAML
 
 file 'config/google.yml', <<-YAML
@@ -341,26 +374,44 @@ development:
     analytics: ""
 YAML
 
+file 'app/helpers/google_helper.rb', <<-RUBY
+module GoogleHelper
+  def google_analytics
+    if GOOGLE_KEYS['analytics'] != ''
+      '<script type="text/javascript">
+      var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+      document.write(unescape("%3Cscript src=\\\'" + gaJsHost + "google-analytics.com/ga.js\\\' type=\\\'text/javascript\\\'%3E%3C/script%3E"));
+      </script>
+      <script type="text/javascript">
+      try {
+      var pageTracker = _gat._getTracker("' + GOOGLE_KEYS['analytics'] + '");
+      pageTracker._trackPageview();
+      } catch(err) {}</script>'
+    end
+  end
+end
+RUBY
+
 file 'config/email_settings.yml', <<-YAML
 development:
-  host: http://#{app_name}.local
+  host: http://#{application}.local
   sender: Development <leonb@beriedata.nl>
-  subject: "[#{app_name} Devel] "
+  subject: "[#{application} Devel] "
 
 test:
-  host: http://#{app_name}.local
+  host: http://#{application}.local
   sender: Test <leonb@beriedata.nl>
-  subject: "[#{app_name} Test] "
+  subject: "[#{application} Test] "
 
 staging:
-  host: http://office.beriedata.nl/#{app_name}
+  host: http://office.beriedata.nl/#{application}
   sender: Staging <leonb@beriedata.nl>
-  subject: "[#{app_name} Staging] "
+  subject: "[#{application} Staging] "
 
 production:
-  host: http://#{app_name}.com
-  sender: #{app_name} <info@#{app_name}.com>
-  subject: "[#{app_name}] "
+  host: http://#{application}.com
+  sender: #{application} <info@#{application}.com>
+  subject: "[#{application}] "
 YAML
 
 file 'Capfile', <<-RUBY
@@ -398,7 +449,52 @@ env = ENV['RAILS_ENV'] || RAILS_ENV
 GOOGLE_KEYS = YAML.load_file(RAILS_ROOT + '/config/google.yml')[env]
 CODE
 
-initializer 'update_record_without_timestamping.rb', <<-CODE
+initializer 'ar_read_only_check_before_destroy.rb', <<-CODE
+# http://blog.zobie.com/2009/01/read-only-models-in-activerecord/
+module ActiveRecord
+  class Base
+    def before_destroy
+      super
+      raise ActiveRecord::ReadOnlyRecord if readonly?
+    end
+  end
+end
+CODE
+
+initializer 'am_i18n_action_mailer.rb', <<-CODE
+# http://github.com/Bertg/i18n_action_mailer
+module I18nActionMailer
+
+  def self.included(base)
+    base.send :include, I18nActionMailer::InstanceMethods
+    base.helper_method :locale, :t, :translate, :l, :localize
+  end
+
+  module InstanceMethods
+    def translate(key, options = {})
+      I18n.translate(key, options.merge(:locale => self.locale))
+    end
+    alias_method :t, :translate
+
+    def localize(key, options = {})
+      I18n.localize(key, options.merge(:locale => self.locale))
+    end
+    alias_method :l, :localize
+
+    def locale
+      @locale
+    end
+
+    def set_locale(locale)
+      @locale = locale
+    end
+  end
+
+end
+
+ActionMailer::Base.send(:include, I18nActionMailer)
+CODE
+initializer 'ar_update_record_without_timestamping.rb', <<-CODE
 module ActiveRecord
   class Base
 
@@ -430,24 +526,24 @@ class Object
 end
 CODE
 
-lib 'rails.rb', <<-CODE
-module Rails
-  class TemplateRunner
-    # Adds a line inside the ApplicationController
-    def application_controller(data = nil, options = {}, &block)
-      sentinel = 'class ApplicationController < ActionController::Base'
-      
-      data = block.call if !data && block_given?
-      
-      in_root do
-        gsub_file 'app/controllers/application_controller.rb', /(#{Regexp.escape(sentinel)})/mi do |match|
-          "#{match}\n  " << data
-        end
-      end
-    end
-  end
-end
-CODE
+# lib 'rails.rb', <<-CODE
+# module Rails
+#   class TemplateRunner
+#     # Adds a line inside the ApplicationController
+#     def application_controller(data = nil, options = {}, &block)
+#       sentinel = 'class ApplicationController < ActionController::Base'
+#       
+#       data = block.call if !data && block_given?
+#       
+#       in_root do
+#         gsub_file 'app/controllers/application_controller.rb', /(#{Regexp.escape(sentinel)})/mi do |match|
+#           "#{match}\n  " << data
+#         end
+#       end
+#     end
+#   end
+# end
+# CODE
 
 git :add => '.'
 git :commit => '-m "Adding Initializers."'
@@ -457,6 +553,29 @@ rake("auth:gen:site_key")
 
 git :add => '.'
 git :commit => '-m "Executed RakeTask."'
+
+generate('controller', 'static')
+
+file 'app/views/static/index.html.erb', <<-TEMPLATE
+<h2>Welcome to Your Application!</h2>
+
+<p>
+  You have successfully created a Twitter-ready application! To test it out just click on <strong>Login via Twitter</strong> above. You should be taken to Twitter and then back here where it will tell you that you are logged in!
+</p>
+
+<p>
+  This template doesn''t assume anything about how you want to build your application other than that you want to use Twitter authentication to do it, so you can generate any controllers, models, and anything else you like! You can tie it back to Twitter accounts simply by adding associations etc. to <code>app/models/user.rb</code>.
+</p>
+
+<% if @users.any? %>
+  <h2>Recently Joined</h2>
+  <% for user in @users %>
+    <%= link_to profile_image(user), twitter_profile_url(user), :target => "_blank" %>
+  <% end %>
+<% end %>
+TEMPLATE
+
+
 
 
 if yes?("\nCreate and migrate databases now? (yes/no)")

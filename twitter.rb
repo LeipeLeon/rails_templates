@@ -14,8 +14,6 @@ gem 'twitter-auth', :lib => 'twitter_auth'
 
 generate('twitter_auth')
 
-generate('controller', 'static')
-
 file 'app/views/static/index.html.erb', <<-TEMPLATE
 <h2>Welcome to Your Twitter Application!</h2>
 

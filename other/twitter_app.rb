@@ -1,3 +1,4 @@
+# rails -m http://github.com/mbleigh/rails-templates/raw/master/twitterapp.rb yourappname
 # Twitter App Generator
 # by Michael Bleigh
 #
